@@ -9,7 +9,7 @@ import requests
 import os
 import sys
 
-broker = 'pkrs.cc'
+broker = '127.0.0.1'
 port = 1883
 keepalive = 60          
 server_topic = '/live/cc/server'
@@ -36,7 +36,7 @@ async def get_danmu(client, cid, q, dmc):
                 }
             }
             await post_to_topic(client, server_topic, json.dumps(msg))
-            url = f'http://pkrs.cc:8081/api/v4/clients/{cid}'
+            url = f'http://127.0.0.1:8081/api/v4/clients/{cid}'
             headers = { 'Authorization': 'Basic YWRtaW46cHVibGlj' }
             response = requests.request("GET", url, headers=headers)
             data = json.loads(response.text)
