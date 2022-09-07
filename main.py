@@ -9,8 +9,9 @@ import requests
 import os
 import sys
 
-broker = '192.168.1.8'
-port = 1883
+host = '192.168.1.8'
+mqtt_port = 1883
+http_port = 18083
 keepalive = 60          
 server_topic = '/live/cc/server'
 client_topic = '/live/cc/client/#'
@@ -22,48 +23,65 @@ async def post_to_topic(client, topic, message):
     print(f'[topic="{topic}"] Publishing message={message}')
     await client.publish(topic, message, qos=0)
 
-async def get_danmu(client, cid, q, dmc):
+async def get_danmu(client, cid, q):
     while True:
         m = await q.get()
-        if m['msg_type'] == 'danmaku':
+        if m["msg_type"] == 'danmaku':
             print(f'Danmaku | {m["name"]}：{m["content"]}')
             msg = {
                 'code': 0,
                 'type': 'resp_get_danmu',
-                'danmu': {
-                    'name': m["name"],
-                    'content': m["content"]
+                'data': {
+                    'url': {},
+                    'danmu': {
+                        'name': m["name"],
+                        'content': m["content"]
+                    }
                 }
             }
             await post_to_topic(client, server_topic, json.dumps(msg))
-            url = f'http://192.168.1.8:18083/api/v5/clients/{cid}'
-            headers = { 'Authorization': 'Basic YTZmMzdkY2NkNjhkMTEyYjpBbmpNbWQwYlFnNXNmaWRwdkVPeGxKeG1Kc2VWOG5oUmFROEQ1Z3N3dkVO' }
+            offline = True
+            url = f'http://{host}:{http_port}/api/v5/clients'
+            headers = { 'Authorization': 'Basic Mjg4MDdmNDAyMTJiOTY5YzpldFlPMnNDSW9UOUM2RkRvamtUOUFReDlDZEtWeFM1ckRaNUVocjJ6SnFDMmNE' }
             response = requests.request("GET", url, headers=headers)
             data = json.loads(response.text)
-            if data["code"]:
+            for d in data["data"]:
+                if d["clientid"] == cid and d["connected"] == True:
+                    offline = False
+            if offline == True:
                 print('client is offline.')
                 p = sys.executable
                 os.execl(p, p, *sys.argv)
-                sys.exit()
 
 async def log_messages(client, messages, template):
     async for message in messages:
         print(template.format(message.payload.decode()))
         data = json.loads(message.payload.decode())
         if data["code"] == 0:
-            if data['type'] == 'req_get_url':
-                cc = CC(data['rid'])
+            if data["type"] == 'req_get_url':
+                url = ""
+                try:
+                    cc = CC(data["data"]["rid"])
+                    url = cc.get_real_url()
+                except:
+                    url = "none"
                 msg = {
                     'code': 0,
                     'type': 'resp_get_url',
-                    'url': cc.get_real_url()
+                    'data': {
+                        'url': url,
+                        'danmu': {
+                            'name': '',
+                            'content': ''
+                        }
+                    }
                 }
                 await post_to_topic(client, server_topic, json.dumps(msg))
-            if data['type'] == 'req_get_danmu':
-                url = f'https://cc.163.com/{data["rid"]}/'
+            if data["type"] == 'req_get_danmu':
+                url = f'https://cc.163.com/{data["data"]["rid"]}/'
                 q = asyncio.Queue()
                 dmc = danmaku.DanmakuClient(url, q)
-                asyncio.create_task(get_danmu(client, data["cid"], q, dmc))
+                asyncio.create_task(get_danmu(client, data["data"]["cid"], q))
                 await dmc.start()
 
 async def cancel_tasks(tasks):
@@ -80,7 +98,7 @@ async def run_mqtt(tasks):
     async with AsyncExitStack() as stack:
         stack.push_async_callback(cancel_tasks, tasks)
 
-        client = Client(hostname=broker, port=port, keepalive=keepalive,
+        client = Client(hostname=host, port=mqtt_port, keepalive=keepalive,
             client_id=client_id, username=username, password=password)
         await stack.enter_async_context(client)
         print('server is started.')
