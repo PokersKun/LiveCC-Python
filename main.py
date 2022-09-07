@@ -9,14 +9,14 @@ import requests
 import os
 import sys
 
-broker = '127.0.0.1'
+broker = '192.168.1.8'
 port = 1883
 keepalive = 60          
 server_topic = '/live/cc/server'
 client_topic = '/live/cc/client/#'
 client_id = f'live-cc-server-{random.randint(0, 1000)}'
-username = 'admin'
-password = 'password'
+username = 'livecc'
+password = '203039'
 
 async def post_to_topic(client, topic, message):
     print(f'[topic="{topic}"] Publishing message={message}')
@@ -36,11 +36,11 @@ async def get_danmu(client, cid, q, dmc):
                 }
             }
             await post_to_topic(client, server_topic, json.dumps(msg))
-            url = f'http://127.0.0.1:8081/api/v4/clients/{cid}'
-            headers = { 'Authorization': 'Basic YWRtaW46cHVibGlj' }
+            url = f'http://192.168.1.8:18083/api/v5/clients/{cid}'
+            headers = { 'Authorization': 'Basic YTZmMzdkY2NkNjhkMTEyYjpBbmpNbWQwYlFnNXNmaWRwdkVPeGxKeG1Kc2VWOG5oUmFROEQ1Z3N3dkVO' }
             response = requests.request("GET", url, headers=headers)
             data = json.loads(response.text)
-            if data["data"] == []:
+            if data["code"]:
                 print('client is offline.')
                 p = sys.executable
                 os.execl(p, p, *sys.argv)
