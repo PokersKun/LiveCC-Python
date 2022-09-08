@@ -4,6 +4,7 @@ from asyncio_mqtt import Client, MqttError
 import random
 import json
 from cc_live import CC
+from bilibili_live import BiliBili
 import danmaku
 import requests
 import os
@@ -61,8 +62,12 @@ async def log_messages(client, messages, template):
             if data["type"] == 'req_get_url':
                 url = ""
                 try:
-                    cc = CC(data["data"]["rid"])
-                    url = cc.get_real_url()
+                    if data["node"] == 'cc':
+                        cc = CC(data["data"]["rid"])
+                        url = cc.get_real_url()
+                    elif data["node"] == 'bilibili':
+                        bilibili = BiliBili(data["data"]["rid"])
+                        url = bilibili.get_real_url()["\u7ebf\u8def1"]
                 except:
                     url = "none"
                 msg = {
@@ -78,7 +83,10 @@ async def log_messages(client, messages, template):
                 }
                 await post_to_topic(client, server_topic, json.dumps(msg))
             if data["type"] == 'req_get_danmu':
-                url = f'https://cc.163.com/{data["data"]["rid"]}/'
+                if data["node"] == 'cc':
+                    url = f'https://cc.163.com/{data["data"]["rid"]}/'
+                elif data["node"] == 'bilibili':
+                    url = f'https://live.bilibili.com/{data["data"]["rid"]}'
                 q = asyncio.Queue()
                 dmc = danmaku.DanmakuClient(url, q)
                 asyncio.create_task(get_danmu(client, data["data"]["cid"], q))
