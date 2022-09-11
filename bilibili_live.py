@@ -70,12 +70,3 @@ class BiliBili:
                     stream_urls[f'线路{i + 1}'] = f'{host}{base_url}{extra}'
                 break
         return stream_urls
-
-
-def get_real_url(rid):
-    try:
-        bilibili = BiliBili(rid)
-        return bilibili.get_real_url()
-    except Exception as e:
-        print('Exception：', e)
-        return False

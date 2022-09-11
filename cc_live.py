@@ -23,12 +23,3 @@ class CC:
         else:
             raise Exception('input error')
         return real_url
-
-
-def get_real_url(rid):
-    try:
-        cc = CC(rid)
-        return cc.get_real_url()
-    except Exception as e:
-        print('Exception：', e)
-        return False
